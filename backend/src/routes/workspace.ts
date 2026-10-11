@@ -218,7 +218,7 @@ router.post("/appointments/import", async (req, res) => {
       customerName: row.customer_name,
       customerEmail: row.customer_email,
       startsAt: new Date(row.starts_at).toISOString(),
-      status: row.status,
+      status: (row.status ?? "booked") as Appointment["status"],
       reminderCount: 0,
     };
     getStore().appointments.unshift(appointment);

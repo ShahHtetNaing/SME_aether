@@ -17,51 +17,55 @@ function asDate(value: string | Date | null | undefined) {
 
 export async function loadSnapshot() {
   const store = getStore();
-  const [invoices, customers, appointments, drafts, logs, imports, profiles, policies] = await Promise.all([
-    prisma.invoice.findMany(),
-    prisma.followUpCustomer.findMany(),
-    prisma.appointment.findMany(),
-    prisma.agentDraft.findMany(),
-    prisma.actionLog.findMany({ orderBy: { timestamp: "desc" } }),
-    prisma.datasetImport.findMany({ orderBy: { importedAt: "desc" } }),
-    prisma.businessProfile.findMany(),
-    prisma.reminderPolicy.findMany(),
-  ]);
+  try {
+    const [invoices, customers, appointments, drafts, logs, imports, profiles, policies] = await Promise.all([
+      prisma.invoice.findMany(),
+      prisma.followUpCustomer.findMany(),
+      prisma.appointment.findMany(),
+      prisma.agentDraft.findMany(),
+      prisma.actionLog.findMany({ orderBy: { timestamp: "desc" } }),
+      prisma.datasetImport.findMany({ orderBy: { importedAt: "desc" } }),
+      prisma.businessProfile.findMany(),
+      prisma.reminderPolicy.findMany(),
+    ]);
 
-  store.invoices = invoices.map((row) => ({
-    ...row,
-    amountSgd: row.amountSgd,
-    dueDate: row.dueDate.toISOString(),
-    lastReminderAt: row.lastReminderAt?.toISOString() ?? null,
-    status: row.status as Invoice["status"],
-  }));
-  store.customers = customers.map((row) => ({
-    ...row,
-    lastContactAt: row.lastContactAt?.toISOString() ?? null,
-  }));
-  store.appointments = appointments.map((row) => ({
-    ...row,
-    startsAt: row.startsAt.toISOString(),
-    status: row.status as Appointment["status"],
-  }));
-  store.drafts = drafts.map((row) => ({
-    ...row,
-    generatedAt: row.generatedAt.toISOString(),
-    agent: row.agent as AgentDraft["agent"],
-    status: row.status as AgentDraft["status"],
-  }));
-  store.logs = logs.map((row) => ({
-    ...row,
-    timestamp: row.timestamp.toISOString(),
-    agent: row.agent as (typeof store.logs)[number]["agent"],
-  }));
-  store.imports = imports.map((row) => ({
-    ...row,
-    importedAt: row.importedAt.toISOString(),
-    kind: row.kind as (typeof store.imports)[number]["kind"],
-  }));
-  for (const profile of profiles) store.profiles[profile.businessId] = profile;
-  for (const policy of policies) store.policies[policy.businessId] = policy;
+    store.invoices = invoices.map((row: any) => ({
+      ...row,
+      amountSgd: row.amountSgd,
+      dueDate: row.dueDate.toISOString(),
+      lastReminderAt: row.lastReminderAt?.toISOString() ?? null,
+      status: row.status as Invoice["status"],
+    }));
+    store.customers = customers.map((row: any) => ({
+      ...row,
+      lastContactAt: row.lastContactAt?.toISOString() ?? null,
+    }));
+    store.appointments = appointments.map((row: any) => ({
+      ...row,
+      startsAt: row.startsAt.toISOString(),
+      status: row.status as Appointment["status"],
+    }));
+    store.drafts = drafts.map((row: any) => ({
+      ...row,
+      generatedAt: row.generatedAt.toISOString(),
+      agent: row.agent as AgentDraft["agent"],
+      status: row.status as AgentDraft["status"],
+    }));
+    store.logs = logs.map((row: any) => ({
+      ...row,
+      timestamp: row.timestamp.toISOString(),
+      agent: row.agent as (typeof store.logs)[number]["agent"],
+    }));
+    store.imports = imports.map((row: any) => ({
+      ...row,
+      importedAt: row.importedAt.toISOString(),
+      kind: row.kind as (typeof store.imports)[number]["kind"],
+    }));
+    for (const profile of profiles) store.profiles[profile.businessId] = profile;
+    for (const policy of policies) store.policies[policy.businessId] = policy;
+  } catch (err) {
+    console.warn("[AI Studio] Snapshot load skipped or database offline:", err);
+  }
 }
 
 export async function saveSnapshot() {
@@ -141,19 +145,44 @@ export async function saveSnapshot() {
   if (profiles.length) ops.push(prisma.businessProfile.createMany({ data: profiles }));
   const policies = Object.values(store.policies);
   if (policies.length) ops.push(prisma.reminderPolicy.createMany({ data: policies }));
-  await prisma.$transaction(ops);
+  try {
+    await prisma.$transaction(ops);
+  } catch (err) {
+    console.warn("[AI Studio] Snapshot save skipped or database offline:", err);
+  }
 }
 
 export async function seedFromCsvIfEmpty() {
   const store = getStore();
   if (store.invoices.length || store.customers.length || store.appointments.length) return { seeded: false };
 
-  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../datasets");
-  const businessId = DEMO_BUSINESS_ID;
+  const candidateRoots = [
+    path.join(process.cwd(), "datasets"),
+    path.join(process.cwd(), "../datasets"),
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../datasets"),
+  ];
 
-  const invoiceCsv = await readFile(path.join(root, "invoices.csv"), "utf8");
-  const customerCsv = await readFile(path.join(root, "customers.csv"), "utf8");
-  const bookingCsv = await readFile(path.join(root, "appointments.csv"), "utf8");
+  let invoiceCsv = "";
+  let customerCsv = "";
+  let bookingCsv = "";
+
+  for (const root of candidateRoots) {
+    try {
+      invoiceCsv = await readFile(path.join(root, "invoices.csv"), "utf8");
+      customerCsv = await readFile(path.join(root, "customers.csv"), "utf8");
+      bookingCsv = await readFile(path.join(root, "appointments.csv"), "utf8");
+      if (invoiceCsv) break;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  if (!invoiceCsv) {
+    console.warn("[AI Studio] Could not find datasets/ CSV files for auto-seed");
+    return { seeded: false };
+  }
+
+  const businessId = DEMO_BUSINESS_ID;
 
   const invoices = importRows(
     invoiceCsv,
@@ -211,7 +240,7 @@ export async function seedFromCsvIfEmpty() {
     customerName: row.customer_name,
     customerEmail: row.customer_email,
     startsAt: new Date(row.starts_at).toISOString(),
-    status: row.status,
+    status: (row.status ?? "booked") as Appointment["status"],
     reminderCount: 0,
   })) satisfies Appointment[];
 

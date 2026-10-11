@@ -1,0 +1,7 @@
+{
+  "name": "Aether",
+  "description": "Operations desk for Singapore SMEs: collections, grants, follow-ups, compliance, and bookings.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
