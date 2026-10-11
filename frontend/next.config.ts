@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const apiOrigin = process.env.API_URL ?? "http://localhost:4000";
+const apiOrigin =
+  process.env.API_URL ??
+  (process.env.VERCEL ? "https://aether-9snf.onrender.com" : "http://localhost:4000");
 
 const nextConfig: NextConfig = {
   async rewrites() {

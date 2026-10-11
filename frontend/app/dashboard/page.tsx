@@ -92,7 +92,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-700">{error}. Start the backend on port 4000.</p>}
+      {error && <p className="text-sm text-red-700">{error}</p>}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="Waiting on you" value={totals?.pendingApprovals ?? 0} />

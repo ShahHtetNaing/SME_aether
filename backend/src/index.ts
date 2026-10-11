@@ -14,7 +14,21 @@ const origins = (process.env.FRONTEND_ORIGIN ?? "http://localhost:3000")
   .map((value) => value.trim())
   .filter(Boolean);
 
-app.use(cors({ origin: origins }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (origins.includes(origin) || origin.endsWith(".vercel.app") || origin.startsWith("http://localhost:")) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Origin not allowed"));
+    },
+  }),
+);
 app.use(express.json({ limit: "2mb" }));
 app.use(tenantContext);
 
