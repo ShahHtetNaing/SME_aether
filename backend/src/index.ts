@@ -6,6 +6,9 @@ import reminderRoutes from "./routes/reminders.js";
 import agentRoutes from "./routes/agent.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import workspaceRoutes from "./routes/workspace.js";
+import { loadDemoDataset } from "./services/seed.js";
+
+loadDemoDataset(process.env.DEMO_BUSINESS_ID ?? "demo-business");
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);

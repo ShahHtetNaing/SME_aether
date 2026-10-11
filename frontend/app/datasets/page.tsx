@@ -23,9 +23,32 @@ export default function DatasetsPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Datasets"
-        description="This is the place to load business records. Paste CSV when the team has files. Until then, lists stay empty and you can still type single rows on each record page."
+        description="Load the built-in sample on this page, or paste your own CSV below."
       />
       {message && <p className="text-sm text-red-800">{message}</p>}
+
+      <section className="panel p-5">
+        <h2 className="font-medium tracking-tight">Sample dataset</h2>
+        <p className="mt-1 text-sm text-muted">
+          Loads Harbour Digital Studio on this page: 6 invoices, 6 customers, 5 bookings, and the Settings profile.
+        </p>
+        <button
+          className="btn-ink mt-4"
+          onClick={async () => {
+            try {
+              const result = await api.loadDemo();
+              await load();
+              setMessage(
+                `Loaded ${result.totals.invoices} invoices, ${result.totals.customers} customers, ${result.totals.appointments} bookings.`,
+              );
+            } catch (err) {
+              setMessage(err instanceof Error ? err.message : "Could not load sample");
+            }
+          }}
+        >
+          Load sample on this page
+        </button>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
         {[

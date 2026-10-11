@@ -2,12 +2,18 @@ import { Router } from "express";
 import { z } from "zod";
 import type { TenantRequest } from "../middleware/tenant.js";
 import { addLog, getProfile, getStore, setProfile } from "../services/store.js";
+import { loadDemoDataset } from "../services/seed.js";
 import { importRows } from "../services/csv.js";
 import { GRANT_CATALOG } from "../../../agents/catalogs/grants.js";
 import { COMPLIANCE_CATALOG } from "../../../agents/catalogs/compliance.js";
 import type { Appointment, FollowUpCustomer } from "../types.js";
 
 const router = Router();
+
+router.post("/demo", (req, res) => {
+  const { businessId } = req as TenantRequest;
+  res.json(loadDemoDataset(businessId));
+});
 
 router.get("/profile", (req, res) => {
   const { businessId } = req as TenantRequest;
