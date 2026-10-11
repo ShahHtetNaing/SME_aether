@@ -18,8 +18,17 @@ app.use(cors({ origin: origins }));
 app.use(express.json({ limit: "2mb" }));
 app.use(tenantContext);
 
+app.get("/", (_req, res) => {
+  res.json({
+    ok: true,
+    name: "Aether",
+    health: "/api/health",
+    hint: "This is the API. Open the Vercel site for the dashboard.",
+  });
+});
+
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "smeflow-ai", dataset: "deferred" });
+  res.json({ ok: true, service: "aether", dataset: "deferred" });
 });
 
 app.use("/api/invoices", invoiceRoutes);
