@@ -9,8 +9,12 @@ import workspaceRoutes from "./routes/workspace.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
+const origins = (process.env.FRONTEND_ORIGIN ?? "http://localhost:3000")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 
-app.use(cors({ origin: ["http://localhost:3000"] }));
+app.use(cors({ origin: origins }));
 app.use(express.json({ limit: "2mb" }));
 app.use(tenantContext);
 
