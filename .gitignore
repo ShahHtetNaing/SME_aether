@@ -8,3 +8,5 @@ dist
 coverage
 prisma/*.db
 prisma/*.db-journal
+**/*.db
+**/*.db-journal
