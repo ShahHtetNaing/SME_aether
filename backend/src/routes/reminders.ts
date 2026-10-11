@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { TenantRequest } from "../middleware/tenant.js";
 import { addLog, getStore } from "../services/store.js";
 import { createTools } from "../../../agents/tools/index.js";
-import { runInvoiceAgent } from "../../../agents/runners/run.js";
+import { runAllAgents, runInvoiceAgent } from "../../../agents/runners/run.js";
 import type { AgentKind } from "../types.js";
 
 const router = Router();
@@ -22,10 +22,9 @@ router.post("/generate", async (req, res) => {
   res.json(result);
 });
 
-router.get("/pending", (req, res) => {
-  const { businessId } = req as TenantRequest;
+function listPending(businessId: string) {
   const store = getStore();
-  const drafts = store.drafts
+  return store.drafts
     .filter((draft) => (draft.status === "pending" || draft.status === "approved") && draftInTenant(businessId, draft.recordId, draft.agent))
     .map((draft) => ({
       ...draft,
@@ -33,6 +32,15 @@ router.get("/pending", (req, res) => {
       customer: store.customers.find((row) => row.id === draft.recordId),
       appointment: store.appointments.find((row) => row.id === draft.recordId),
     }));
+}
+
+router.get("/pending", async (req, res) => {
+  const { businessId } = req as TenantRequest;
+  let drafts = listPending(businessId);
+  if (drafts.length === 0) {
+    await runAllAgents(businessId);
+    drafts = listPending(businessId);
+  }
   res.json({ drafts });
 });
 

@@ -21,8 +21,10 @@ export default function ApprovalsPage() {
   const [message, setMessage] = useState("");
 
   async function load() {
+    setMessage("Preparing drafts…");
     const data = await api.pending();
     setDrafts(data.drafts);
+    setMessage(data.drafts.length ? "" : "No drafts yet. Load CSVs on Datasets, then refresh this page.");
   }
 
   useEffect(() => {

@@ -12,6 +12,20 @@ import type {
 
 const DEMO_BUSINESS_ID = process.env.DEMO_BUSINESS_ID ?? "demo-business";
 
+type Store = {
+  invoices: Invoice[];
+  customers: FollowUpCustomer[];
+  appointments: Appointment[];
+  evidence: ComplianceEvidence[];
+  drafts: ReminderDraft[];
+  logs: ActionLog[];
+  runs: AgentRun[];
+  policies: Record<string, ReminderPolicy>;
+  profiles: Record<string, BusinessProfile>;
+};
+
+const memory = globalThis as typeof globalThis & { __aetherStore?: Store };
+
 function defaultPolicy(businessId: string): ReminderPolicy {
   return {
     businessId,
@@ -36,51 +50,44 @@ function defaultProfile(businessId: string): BusinessProfile {
   };
 }
 
-type Store = {
-  invoices: Invoice[];
-  customers: FollowUpCustomer[];
-  appointments: Appointment[];
-  evidence: ComplianceEvidence[];
-  drafts: ReminderDraft[];
-  logs: ActionLog[];
-  runs: AgentRun[];
-  policies: Record<string, ReminderPolicy>;
-  profiles: Record<string, BusinessProfile>;
-};
-
-const store: Store = {
-  invoices: [],
-  customers: [],
-  appointments: [],
-  evidence: [],
-  drafts: [],
-  logs: [],
-  runs: [],
-  policies: { [DEMO_BUSINESS_ID]: defaultPolicy(DEMO_BUSINESS_ID) },
-  profiles: { [DEMO_BUSINESS_ID]: defaultProfile(DEMO_BUSINESS_ID) },
-};
+function emptyStore(): Store {
+  return {
+    invoices: [],
+    customers: [],
+    appointments: [],
+    evidence: [],
+    drafts: [],
+    logs: [],
+    runs: [],
+    policies: { [DEMO_BUSINESS_ID]: defaultPolicy(DEMO_BUSINESS_ID) },
+    profiles: { [DEMO_BUSINESS_ID]: defaultProfile(DEMO_BUSINESS_ID) },
+  };
+}
 
 export function getStore() {
-  return store;
+  if (!memory.__aetherStore) memory.__aetherStore = emptyStore();
+  return memory.__aetherStore;
 }
 
 export function getPolicy(businessId: string): ReminderPolicy {
+  const store = getStore();
   if (!store.policies[businessId]) store.policies[businessId] = defaultPolicy(businessId);
   return store.policies[businessId];
 }
 
 export function setPolicy(policy: ReminderPolicy) {
-  store.policies[policy.businessId] = policy;
+  getStore().policies[policy.businessId] = policy;
   return policy;
 }
 
 export function getProfile(businessId: string): BusinessProfile {
+  const store = getStore();
   if (!store.profiles[businessId]) store.profiles[businessId] = defaultProfile(businessId);
   return store.profiles[businessId];
 }
 
 export function setProfile(profile: BusinessProfile) {
-  store.profiles[profile.businessId] = profile;
+  getStore().profiles[profile.businessId] = profile;
   return profile;
 }
 
@@ -94,6 +101,6 @@ export function addLog(entry: Omit<ActionLog, "id" | "timestamp"> & { id?: strin
     action: entry.action,
     result: entry.result,
   };
-  store.logs.unshift(log);
+  getStore().logs.unshift(log);
   return log;
 }
