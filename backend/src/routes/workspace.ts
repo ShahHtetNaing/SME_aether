@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { TenantRequest } from "../middleware/tenant.js";
-import { addLog, getProfile, getStore, setProfile } from "../services/store.js";
+import { addLog, getProfile, getStore, recordImport, setProfile } from "../services/store.js";
+import { saveSnapshot } from "../services/persist.js";
 import { importRows } from "../services/csv.js";
 import { GRANT_CATALOG } from "../../../agents/catalogs/grants.js";
 import { COMPLIANCE_CATALOG } from "../../../agents/catalogs/compliance.js";
@@ -9,12 +10,23 @@ import type { Appointment, FollowUpCustomer } from "../types.js";
 
 const router = Router();
 
+router.get("/records", (req, res) => {
+  const { businessId } = req as TenantRequest;
+  const store = getStore();
+  res.json({
+    invoices: store.invoices.filter((row) => row.businessId === businessId),
+    customers: store.customers.filter((row) => row.businessId === businessId),
+    appointments: store.appointments.filter((row) => row.businessId === businessId),
+    files: store.imports.filter((row) => row.businessId === businessId),
+  });
+});
+
 router.get("/profile", (req, res) => {
   const { businessId } = req as TenantRequest;
   res.json({ profile: getProfile(businessId) });
 });
 
-router.post("/profile", (req, res) => {
+router.post("/profile", async (req, res) => {
   const { businessId } = req as TenantRequest;
   const schema = z.object({
     name: z.string().min(1),
@@ -27,7 +39,9 @@ router.post("/profile", (req, res) => {
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  res.json({ profile: setProfile({ businessId, ...parsed.data }) });
+  const profile = setProfile({ businessId, ...parsed.data });
+  await saveSnapshot();
+  res.json({ profile });
 });
 
 router.get("/grants", (req, res) => {
@@ -73,9 +87,10 @@ router.post("/customers", (req, res) => {
   res.json({ customer });
 });
 
-router.post("/customers/import", (req, res) => {
+router.post("/customers/import", async (req, res) => {
   const { businessId } = req as TenantRequest;
   const csv = typeof req.body?.csv === "string" ? req.body.csv : "";
+  const filename = typeof req.body?.filename === "string" && req.body.filename.trim() ? req.body.filename.trim() : "customers.csv";
   if (!csv.trim()) return res.status(400).json({ error: "No CSV provided. Dataset deferred." });
   const schema = z.object({
     name: z.string().min(1),
@@ -97,6 +112,8 @@ router.post("/customers/import", (req, res) => {
     getStore().customers.unshift(customer);
     return customer;
   });
+  recordImport({ businessId, filename, kind: "customers", rowCount: imported.length });
+  await saveSnapshot();
   res.json({ imported: imported.length, errors, customers: imported });
 });
 
@@ -182,9 +199,10 @@ router.post("/appointments/:id/cancel", (req, res) => {
   res.json({ appointment });
 });
 
-router.post("/appointments/import", (req, res) => {
+router.post("/appointments/import", async (req, res) => {
   const { businessId } = req as TenantRequest;
   const csv = typeof req.body?.csv === "string" ? req.body.csv : "";
+  const filename = typeof req.body?.filename === "string" && req.body.filename.trim() ? req.body.filename.trim() : "appointments.csv";
   if (!csv.trim()) return res.status(400).json({ error: "No CSV provided. Dataset deferred." });
   const schema = z.object({
     customer_name: z.string().min(1),
@@ -206,6 +224,8 @@ router.post("/appointments/import", (req, res) => {
     getStore().appointments.unshift(appointment);
     return appointment;
   });
+  recordImport({ businessId, filename, kind: "appointments", rowCount: imported.length });
+  await saveSnapshot();
   res.json({ imported: imported.length, errors, appointments: imported });
 });
 

@@ -42,7 +42,7 @@ app.get("/", (_req, res) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "aether", dataset: "deferred" });
+  res.json({ ok: true, service: "aether", dataset: "sqlite" });
 });
 
 app.use("/api/invoices", invoiceRoutes);
@@ -51,6 +51,16 @@ app.use("/api/agent", agentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/workspace", workspaceRoutes);
 
-app.listen(port, () => {
-  console.log(`Aether API listening on http://localhost:${port}`);
+async function start() {
+  const { loadSnapshot, seedFromCsvIfEmpty } = await import("./services/persist.js");
+  await loadSnapshot();
+  await seedFromCsvIfEmpty();
+  app.listen(port, () => {
+    console.log(`Aether API listening on http://localhost:${port}`);
+  });
+}
+
+start().catch((error) => {
+  console.error(error);
+  process.exit(1);
 });

@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "dev": "export DATABASE_URL=\"${DATABASE_URL:-file:./prisma/aether.db}\" && prisma db push && tsx watch src/index.ts",
+    "start": "export DATABASE_URL=\"${DATABASE_URL:-file:./prisma/aether.db}\" && prisma db push && tsx src/index.ts",
+    "postinstall": "prisma generate",
     "test": "vitest run"
   },
   "dependencies": {
+    "@prisma/client": "^6.4.1",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "prisma": "^6.4.1",
     "tsx": "^4.19.3",
     "zod": "^3.24.2"
   },

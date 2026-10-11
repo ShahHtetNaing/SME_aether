@@ -4,6 +4,7 @@ import type {
   Appointment,
   BusinessProfile,
   ComplianceEvidence,
+  DatasetImport,
   FollowUpCustomer,
   Invoice,
   ReminderDraft,
@@ -22,6 +23,7 @@ type Store = {
   runs: AgentRun[];
   policies: Record<string, ReminderPolicy>;
   profiles: Record<string, BusinessProfile>;
+  imports: DatasetImport[];
 };
 
 const memory = globalThis as typeof globalThis & { __aetherStore?: Store };
@@ -61,6 +63,7 @@ function emptyStore(): Store {
     runs: [],
     policies: { [DEMO_BUSINESS_ID]: defaultPolicy(DEMO_BUSINESS_ID) },
     profiles: { [DEMO_BUSINESS_ID]: defaultProfile(DEMO_BUSINESS_ID) },
+    imports: [],
   };
 }
 
@@ -103,4 +106,17 @@ export function addLog(entry: Omit<ActionLog, "id" | "timestamp"> & { id?: strin
   };
   getStore().logs.unshift(log);
   return log;
+}
+
+export function recordImport(entry: Omit<DatasetImport, "id" | "importedAt"> & { id?: string; importedAt?: string }) {
+  const row: DatasetImport = {
+    id: entry.id ?? crypto.randomUUID(),
+    importedAt: entry.importedAt ?? new Date().toISOString(),
+    businessId: entry.businessId,
+    filename: entry.filename,
+    kind: entry.kind,
+    rowCount: entry.rowCount,
+  };
+  getStore().imports.unshift(row);
+  return row;
 }

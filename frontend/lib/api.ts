@@ -21,7 +21,8 @@ export const api = {
     dueDate: string;
     status: "unpaid" | "paid" | "disputed";
   }) => request("/api/invoices", { method: "POST", body: JSON.stringify(body) }),
-  importCsv: (csv: string) => request("/api/invoices/import", { method: "POST", body: JSON.stringify({ csv }) }),
+  importCsv: (csv: string, filename?: string) =>
+    request("/api/invoices/import", { method: "POST", body: JSON.stringify({ csv, filename }) }),
   analyze: (agent: string = "invoice") =>
     request("/api/agent/analyze", { method: "POST", body: JSON.stringify({ agent }) }),
   pending: () => request<{ drafts: import("./types").Draft[] }>("/api/reminders/pending"),
@@ -41,7 +42,8 @@ export const api = {
   customers: () => request<{ customers: { id: string; name: string; email: string; lastContactAt: string | null; notes: string }[] }>("/api/workspace/customers"),
   createCustomer: (body: { name: string; email: string; lastContactAt?: string; notes?: string }) =>
     request("/api/workspace/customers", { method: "POST", body: JSON.stringify(body) }),
-  importCustomers: (csv: string) => request("/api/workspace/customers/import", { method: "POST", body: JSON.stringify({ csv }) }),
+  importCustomers: (csv: string, filename?: string) =>
+    request("/api/workspace/customers/import", { method: "POST", body: JSON.stringify({ csv, filename }) }),
   compliance: () =>
     request<{ requirements: { id: string; framework: string; title: string; summary: string; applies: boolean; evidenceStatus: string }[] }>(
       "/api/workspace/compliance",
@@ -53,5 +55,13 @@ export const api = {
   createAppointment: (body: { customerName: string; customerEmail: string; startsAt: string }) =>
     request("/api/workspace/appointments", { method: "POST", body: JSON.stringify(body) }),
   cancelAppointment: (id: string) => request(`/api/workspace/appointments/${id}/cancel`, { method: "POST" }),
-  importAppointments: (csv: string) => request("/api/workspace/appointments/import", { method: "POST", body: JSON.stringify({ csv }) }),
+  importAppointments: (csv: string, filename?: string) =>
+    request("/api/workspace/appointments/import", { method: "POST", body: JSON.stringify({ csv, filename }) }),
+  records: () =>
+    request<{
+      invoices: import("./types").Invoice[];
+      customers: { id: string; name: string; email: string; lastContactAt: string | null; notes: string }[];
+      appointments: { id: string; customerName: string; customerEmail: string; startsAt: string; status: string }[];
+      files: { id: string; filename: string; kind: string; rowCount: number; importedAt: string }[];
+    }>("/api/workspace/records"),
 };

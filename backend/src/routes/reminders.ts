@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { TenantRequest } from "../middleware/tenant.js";
 import { addLog, getStore } from "../services/store.js";
+import { saveSnapshot } from "../services/persist.js";
 import { createTools } from "../../../agents/tools/index.js";
 import { runAllAgents, runInvoiceAgent } from "../../../agents/runners/run.js";
 import type { AgentKind } from "../types.js";
@@ -40,6 +41,7 @@ router.get("/pending", async (req, res) => {
   if (drafts.length === 0) {
     await runAllAgents(businessId);
     drafts = listPending(businessId);
+    await saveSnapshot();
   }
   res.json({ drafts });
 });

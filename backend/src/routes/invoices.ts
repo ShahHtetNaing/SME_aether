@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { TenantRequest } from "../middleware/tenant.js";
-import { getPolicy, getStore } from "../services/store.js";
+import { getPolicy, getStore, recordImport } from "../services/store.js";
+import { saveSnapshot } from "../services/persist.js";
 import { isEligible } from "../services/overdue.js";
 import { importRows } from "../services/csv.js";
 import type { Invoice, InvoiceStatus } from "../types.js";
@@ -47,9 +48,10 @@ router.post("/", (req, res) => {
   res.json({ invoice });
 });
 
-router.post("/import", (req, res) => {
+router.post("/import", async (req, res) => {
   const { businessId } = req as TenantRequest;
   const csv = typeof req.body?.csv === "string" ? req.body.csv : "";
+  const filename = typeof req.body?.filename === "string" && req.body.filename.trim() ? req.body.filename.trim() : "invoices.csv";
   if (!csv.trim()) {
     return res.status(400).json({ error: "No CSV provided. Dataset work is deferred; paste CSV later." });
   }
@@ -73,6 +75,8 @@ router.post("/import", (req, res) => {
     store.invoices.unshift(invoice);
     return invoice;
   });
+  recordImport({ businessId, filename, kind: "invoices", rowCount: imported.length });
+  await saveSnapshot();
 
   return res.json({ imported: imported.length, errors, invoices: imported });
 });

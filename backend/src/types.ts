@@ -96,3 +96,12 @@ export type AgentRun = {
 };
 
 export type ReminderDraft = AgentDraft;
+
+export type DatasetImport = {
+  id: string;
+  businessId: string;
+  filename: string;
+  kind: "invoices" | "customers" | "appointments";
+  rowCount: number;
+  importedAt: string;
+};
