@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id                  String   @id @default(uuid())
+  name                String
+  industry            String?
+  employeeCount       Int      @default(0) @map("employee_count")
+  annualRevenueSgd    Decimal  @default(0) @map("annual_revenue_sgd") @db.Decimal(14, 2)
+  isExporting         Boolean  @default(false) @map("is_exporting")
+  usesDigitalTools    Boolean  @default(false) @map("uses_digital_tools")
+  hasGstRegistration  Boolean  @default(false) @map("has_gst_registration")
+  timezone            String   @default("Asia/Singapore")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  users         User[]
+  customers     Customer[]
+  invoices      Invoice[]
+  appointments  Appointment[]
+  evidence      ComplianceEvidence[]
+  policies      ReminderPolicy[]
+  agentRuns     AgentRun[]
+  drafts        AgentDraft[]
+
+  @@map("businesses")
+}
+
+model User {
+  id         String     @id @default(uuid())
+  businessId String     @map("business_id")
+  role       String
+  email      String
+  business   Business   @relation(fields: [businessId], references: [id])
+  approvals  Approval[]
+
+  @@map("users")
+}
+
+model Customer {
+  id            String    @id @default(uuid())
+  businessId    String    @map("business_id")
+  name          String
+  email         String
+  lastContactAt DateTime? @map("last_contact_at")
+  notes         String    @default("")
+  business      Business  @relation(fields: [businessId], references: [id])
+  invoices      Invoice[]
+
+  @@map("customers")
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  businessId    String   @map("business_id")
+  customerId    String   @map("customer_id")
+  invoiceNumber String   @map("invoice_number")
+  amountSgd     Decimal  @map("amount_sgd") @db.Decimal(12, 2)
+  dueDate       DateTime @map("due_date")
+  status        String
+  business      Business @relation(fields: [businessId], references: [id])
+  customer      Customer @relation(fields: [customerId], references: [id])
+  logs          ActionLog[]
+
+  @@unique([businessId, invoiceNumber])
+  @@map("invoices")
+}
+
+model Appointment {
+  id             String   @id @default(uuid())
+  businessId     String   @map("business_id")
+  customerName   String   @map("customer_name")
+  customerEmail  String   @map("customer_email")
+  startsAt       DateTime @map("starts_at")
+  status         String
+  reminderCount  Int      @default(0) @map("reminder_count")
+  business       Business @relation(fields: [businessId], references: [id])
+
+  @@map("appointments")
+}
+
+model ComplianceEvidence {
+  id             String   @id @default(uuid())
+  businessId     String   @map("business_id")
+  requirementId  String   @map("requirement_id")
+  status         String
+  note           String   @default("")
+  business       Business @relation(fields: [businessId], references: [id])
+
+  @@unique([businessId, requirementId])
+  @@map("compliance_evidence")
+}
+
+model ReminderPolicy {
+  id                       String   @id @default(uuid())
+  businessId               String   @map("business_id")
+  minimumOverdueDays       Int      @map("minimum_overdue_days")
+  maxReminders             Int      @map("max_reminders")
+  cooldownDays             Int      @map("cooldown_days")
+  customerFollowUpDays     Int      @default(14) @map("customer_follow_up_days")
+  appointmentReminderHours Int      @default(24) @map("appointment_reminder_hours")
+  business                 Business @relation(fields: [businessId], references: [id])
+
+  @@map("reminder_policies")
+}
+
+model AgentDraft {
+  id          String     @id @default(uuid())
+  businessId  String     @map("business_id")
+  agent       String
+  recordId    String     @map("record_id")
+  subject     String
+  body        String
+  status      String
+  generatedAt DateTime   @default(now()) @map("generated_at")
+  rationale   String?
+  business    Business   @relation(fields: [businessId], references: [id])
+  approvals   Approval[]
+
+  @@map("agent_drafts")
+}
+
+model Approval {
+  id         String     @id @default(uuid())
+  draftId    String     @map("draft_id")
+  approvedBy String     @map("approved_by")
+  approvedAt DateTime   @default(now()) @map("approved_at")
+  decision   String
+  draft      AgentDraft @relation(fields: [draftId], references: [id])
+  user       User       @relation(fields: [approvedBy], references: [id])
+
+  @@map("approvals")
+}
+
+model AgentRun {
+  id          String      @id @default(uuid())
+  businessId  String      @map("business_id")
+  agent       String
+  startedAt   DateTime    @default(now()) @map("started_at")
+  completedAt DateTime?   @map("completed_at")
+  status      String
+  business    Business    @relation(fields: [businessId], references: [id])
+  logs        ActionLog[]
+
+  @@map("agent_runs")
+}
+
+model ActionLog {
+  id         String    @id @default(uuid())
+  agent      String
+  agentRunId String?   @map("agent_run_id")
+  invoiceId  String?   @map("invoice_id")
+  action     String
+  result     String
+  timestamp  DateTime  @default(now())
+  agentRun   AgentRun? @relation(fields: [agentRunId], references: [id])
+  invoice    Invoice?  @relation(fields: [invoiceId], references: [id])
+
+  @@map("action_logs")
+}
