@@ -27,6 +27,7 @@ const groups = [
     items: [
       { href: "/datasets", label: "Datasets" },
       { href: "/settings", label: "Settings" },
+      { href: "/about", label: "About Us" },
     ],
   },
 ];

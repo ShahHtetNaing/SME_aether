@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { importRows } from "./csv.js";
-import { prisma } from "./db.js";
+import { prisma, hasDatabase } from "./db.js";
 import { addLog, getStore, recordImport, setPolicy, setProfile } from "./store.js";
 import type { AgentDraft, Appointment, FollowUpCustomer, Invoice } from "../types.js";
 import { z } from "zod";
@@ -16,6 +16,7 @@ function asDate(value: string | Date | null | undefined) {
 }
 
 export async function loadSnapshot() {
+  if (!hasDatabase) return;
   const store = getStore();
   try {
     const [invoices, customers, appointments, drafts, logs, imports, profiles, policies] = await Promise.all([
@@ -63,12 +64,13 @@ export async function loadSnapshot() {
     }));
     for (const profile of profiles) store.profiles[profile.businessId] = profile;
     for (const policy of policies) store.policies[policy.businessId] = policy;
-  } catch (err) {
-    console.warn("[AI Studio] Snapshot load skipped or database offline:", err);
+  } catch {
+    // Database offline or unavailable — in-memory store remains primary
   }
 }
 
 export async function saveSnapshot() {
+  if (!hasDatabase) return;
   const store = getStore();
   const ops = [
     prisma.invoice.deleteMany(),
@@ -147,8 +149,8 @@ export async function saveSnapshot() {
   if (policies.length) ops.push(prisma.reminderPolicy.createMany({ data: policies }));
   try {
     await prisma.$transaction(ops);
-  } catch (err) {
-    console.warn("[AI Studio] Snapshot save skipped or database offline:", err);
+  } catch {
+    // Database offline or unavailable — in-memory store remains primary
   }
 }
 

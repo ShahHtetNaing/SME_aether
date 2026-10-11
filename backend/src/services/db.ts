@@ -25,15 +25,25 @@ function createMockPrisma() {
   );
 }
 
-let prisma: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PrismaClient } = await import("@prisma/client");
-  prisma = new PrismaClient();
-} catch {
-  console.warn("[AI Studio] Database not connected — using in-memory mock");
-  prisma = createMockPrisma();
+const isSqliteUrl =
+  typeof process.env.DATABASE_URL === "string" &&
+  process.env.DATABASE_URL.trim().startsWith("file:");
+
+let prisma: any = createMockPrisma();
+let hasDatabase = false;
+
+if (isSqliteUrl) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaClient } = await import("@prisma/client");
+    prisma = new PrismaClient();
+    hasDatabase = true;
+  } catch (err) {
+    console.warn("[AI Studio] Database client initialization failed — using in-memory mock:", err);
+    prisma = createMockPrisma();
+    hasDatabase = false;
+  }
 }
 
-export { prisma };
+export { prisma, hasDatabase };
 export const databaseReady = true;

@@ -1,0 +1,32 @@
+# Docker ignore file
+.git
+.gitignore
+.gcloudignore
+.dockerignore
+
+# Dependencies and caches
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+**/dist/
+coverage/
+
+# Logs and environment
+*.log
+.env
+.env.local
+.DS_Store
+
+# Lockfiles
+bun.lock
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+
+# Local database files
+prisma/*.db
+prisma/*.db-journal
+**/*.db
+**/*.db-journal

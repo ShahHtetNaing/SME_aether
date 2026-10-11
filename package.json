@@ -12,5 +12,8 @@
     "start": "npm run start --workspace=frontend",
     "lint": "echo 'No lint issues'",
     "test": "npm run test --workspace=backend"
+  },
+  "dependencies": {
+    "qrcode.react": "^4.2.0"
   }
 }
