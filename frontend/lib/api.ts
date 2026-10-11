@@ -54,6 +54,4 @@ export const api = {
     request("/api/workspace/appointments", { method: "POST", body: JSON.stringify(body) }),
   cancelAppointment: (id: string) => request(`/api/workspace/appointments/${id}/cancel`, { method: "POST" }),
   importAppointments: (csv: string) => request("/api/workspace/appointments/import", { method: "POST", body: JSON.stringify({ csv }) }),
-  loadDemo: () =>
-    request<{ totals: { invoices: number; customers: number; appointments: number } }>("/api/workspace/demo", { method: "POST" }),
 };

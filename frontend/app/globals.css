@@ -171,6 +171,17 @@ body {
   transform: translateY(-2px);
 }
 
+.drop-zone {
+  border: 1.5px dashed #c4b5fd;
+  background: #faf8ff;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.drop-zone.active {
+  border-color: #6d28d9;
+  background: #f3e8ff;
+}
+
 .live-dot {
   width: 8px;
   height: 8px;

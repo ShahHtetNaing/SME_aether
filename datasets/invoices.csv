@@ -1,0 +1,7 @@
+invoice_number,customer_name,customer_email,amount_sgd,due_date,status
+INV-1001,Tan Bakery Pte Ltd,accounts@tanbakery.sg,1280.50,2026-09-12,unpaid
+INV-1002,Harbour Kopi,pay@harbourkopi.sg,640.00,2026-09-28,unpaid
+INV-1003,Little Orchard Retail,finance@littleorchard.sg,2100.00,2026-08-20,unpaid
+INV-1004,East Coast Logistics,ap@eclogistics.sg,890.00,2026-10-01,disputed
+INV-1005,Garden Table F&B,hello@gardentable.sg,450.00,2026-10-05,paid
+INV-1006,Northstar Tuition,billing@northstar.edu.sg,1575.25,2026-09-05,unpaid

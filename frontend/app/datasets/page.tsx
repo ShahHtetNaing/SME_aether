@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { classifyCsv, type DatasetKind } from "../../lib/dataset";
 import { CsvImport } from "../../components/CsvImport";
 import { PageHeader } from "../../components/PageHeader";
 import type { Stats } from "../../lib/types";
@@ -9,6 +10,8 @@ import type { Stats } from "../../lib/types";
 export default function DatasetsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [message, setMessage] = useState("");
+  const [active, setActive] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     setStats(await api.stats());
@@ -18,36 +21,106 @@ export default function DatasetsPage() {
     load().catch((err) => setMessage(err.message));
   }, []);
 
+  async function importKind(kind: DatasetKind, csv: string) {
+    if (kind === "invoices") await api.importCsv(csv);
+    if (kind === "customers") await api.importCustomers(csv);
+    if (kind === "appointments") await api.importAppointments(csv);
+  }
+
+  async function importThenRun(kind: DatasetKind, csv: string) {
+    await importKind(kind, csv);
+    await api.analyze("all");
+    await load();
+  }
+
+  async function handleFiles(files: FileList | File[]) {
+    const list = Array.from(files).filter((file) => file.name.toLowerCase().endsWith(".csv") || file.type.includes("csv") || file.type === "text/plain");
+    if (!list.length) {
+      setMessage("Drop CSV files (invoices, customers, bookings).");
+      return;
+    }
+    setBusy(true);
+    try {
+      const loaded: string[] = [];
+      for (const file of list) {
+        const csv = await file.text();
+        const kind = classifyCsv(csv, file.name);
+        if (!kind) {
+          setMessage(`Could not tell what ${file.name} is. Name it invoices.csv, customers.csv, or appointments.csv.`);
+          return;
+        }
+        await importKind(kind, csv);
+        loaded.push(`${file.name} → ${kind}`);
+      }
+      await api.analyze("all");
+      await load();
+      setMessage(`${loaded.join(" · ")}. Agents started — open Approvals.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Workspace"
         title="Datasets"
-        description="Load the built-in sample on this page, or paste your own CSV below."
+        description="Drag CSV files onto this page, or paste into a box. After import, all five agents run and drafts go to Approvals."
       />
       {message && <p className="text-sm text-red-800">{message}</p>}
 
-      <section className="panel p-5">
-        <h2 className="font-medium tracking-tight">Sample dataset</h2>
-        <p className="mt-1 text-sm text-muted">
-          Loads Harbour Digital Studio on this page: 6 invoices, 6 customers, 5 bookings, and the Settings profile.
+      <section
+        className={`panel drop-zone p-8 text-center ${active ? "active" : ""}`}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setActive(true);
+        }}
+        onDragLeave={() => setActive(false)}
+        onDrop={async (event) => {
+          event.preventDefault();
+          setActive(false);
+          await handleFiles(event.dataTransfer.files);
+        }}
+        onPaste={async (event) => {
+          const text = event.clipboardData.getData("text");
+          if (!text.trim()) return;
+          const kind = classifyCsv(text);
+          if (!kind) {
+            setMessage("Paste could not be classified. Use an invoices, customers, or bookings header row.");
+            return;
+          }
+          setBusy(true);
+          try {
+            await importThenRun(kind, text);
+            setMessage(`Pasted ${kind}. Agents started — open Approvals.`);
+          } catch (err) {
+            setMessage(err instanceof Error ? err.message : "Import failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+        tabIndex={0}
+      >
+        <p className="text-lg font-semibold tracking-tight">Drop CSV files here</p>
+        <p className="mt-2 text-sm text-muted">
+          You can drop invoices.csv, customers.csv, and appointments.csv together. Or click and paste.
         </p>
-        <button
-          className="btn-ink mt-4"
-          onClick={async () => {
-            try {
-              const result = await api.loadDemo();
-              await load();
-              setMessage(
-                `Loaded ${result.totals.invoices} invoices, ${result.totals.customers} customers, ${result.totals.appointments} bookings.`,
-              );
-            } catch (err) {
-              setMessage(err instanceof Error ? err.message : "Could not load sample");
-            }
-          }}
-        >
-          Load sample on this page
-        </button>
+        <label className="btn-ink mt-5 inline-block cursor-pointer">
+          {busy ? "Importing…" : "Choose files"}
+          <input
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            multiple
+            className="hidden"
+            disabled={busy}
+            onChange={async (event) => {
+              if (event.target.files) await handleFiles(event.target.files);
+              event.target.value = "";
+            }}
+          />
+        </label>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -67,26 +140,17 @@ export default function DatasetsPage() {
         <CsvImport
           title="Invoices"
           hint="invoice_number, customer_name, customer_email, amount_sgd, due_date, status (unpaid | paid | disputed)"
-          onImport={async (csv) => {
-            await api.importCsv(csv);
-            await load();
-          }}
+          onImport={(csv) => importThenRun("invoices", csv)}
         />
         <CsvImport
           title="Customers"
           hint="name, email, last_contact_at, notes"
-          onImport={async (csv) => {
-            await api.importCustomers(csv);
-            await load();
-          }}
+          onImport={(csv) => importThenRun("customers", csv)}
         />
         <CsvImport
           title="Bookings"
           hint="customer_name, customer_email, starts_at, status (booked | cancelled | completed)"
-          onImport={async (csv) => {
-            await api.importAppointments(csv);
-            await load();
-          }}
+          onImport={(csv) => importThenRun("appointments", csv)}
         />
       </div>
     </div>
